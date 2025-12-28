@@ -1,39 +1,67 @@
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Trophy, Target } from 'lucide-react';
 
-export default async function LearnPage() {
-    const supabase = await createClient();
+export default function LearnPage() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [courses, setCourses] = useState<any[]>([]);
+    const [progress, setProgress] = useState<any[]>([]);
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    useEffect(() => {
+        checkAuth();
+    }, []);
 
-    // If no user, show a client component that redirects
-    if (!user) {
+    const checkAuth = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            router.push('/auth?redirectTo=/learn');
+            return;
+        }
+
+        setUser(user);
+        await fetchData(user.id);
+        setLoading(false);
+    };
+
+    const fetchData = async (userId: string) => {
+        // Fetch courses
+        const { data: coursesData } = await supabase
+            .from('courses')
+            .select('*')
+            .order('id', { ascending: true });
+
+        setCourses(coursesData || []);
+
+        // Fetch user progress
+        const { data: progressData } = await supabase
+            .from('user_progress')
+            .select('*')
+            .eq('user_id', userId);
+
+        setProgress(progressData || []);
+    };
+
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <p>Redirecting to login...</p>
-                <script dangerouslySetInnerHTML={{ __html: `window.location.href = '/auth?redirectTo=/learn'` }} />
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
             </div>
         );
     }
 
-
-    // Fetch courses
-    const { data: courses } = await supabase
-        .from('courses')
-        .select('*')
-        .order('id', { ascending: true });
-
-    // Fetch user progress
-    const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id);
-
-    const completedLessons = progress?.filter(p => p.completed).length || 0;
-    const totalScore = progress?.reduce((sum, p) => sum + p.score, 0) || 0;
+    const completedLessons = progress.filter(p => p.completed).length;
+    const totalScore = progress.reduce((sum, p) => sum + p.score, 0);
 
     return (
         <div className="min-h-screen bg-background">
@@ -70,7 +98,7 @@ export default async function LearnPage() {
                 <div className="space-y-6">
                     <h2 className="text-2xl font-bold">Courses</h2>
 
-                    {courses && courses.length > 0 ? (
+                    {courses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {courses.map((course) => (
                                 <CourseCard key={course.id} course={course} />
