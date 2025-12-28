@@ -1,36 +1,97 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useEffect, useState, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Lock, CheckCircle2, Circle } from 'lucide-react';
 import type { CourseWithUnits } from '@/lib/types/database';
 
-export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const supabase = await createClient();
+export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [course, setCourse] = useState<any>(null);
+    const [progressMap, setProgressMap] = useState<Map<number, any>>(new Map());
 
-    // Check auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/auth');
+    useEffect(() => {
+        loadData();
+    }, [id]);
 
-    // Fetch course with units and lessons
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/api/courses/${id}`, {
-        cache: 'no-store'
-    });
+    const loadData = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            router.push('/auth');
+            return;
+        }
+        setUser(user);
 
-    if (!response.ok) {
-        redirect('/learn');
+        // Fetch course with units and lessons manually
+        // Since we can't easily join deep relations with just supabase client without advanced query
+        // We will do cascading fetches which is simpler for now
+
+        // 1. Get Course
+        const { data: courseData } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (!courseData) {
+            router.push('/learn');
+            return;
+        }
+
+        // 2. Get Units
+        const { data: unitsData } = await supabase
+            .from('units')
+            .select('*')
+            .eq('course_id', id)
+            .order('order', { ascending: true });
+
+        // 3. For each unit, get lessons
+        const unitsWithLessons = await Promise.all((unitsData || []).map(async (unit) => {
+            const { data: lessonsData } = await supabase
+                .from('lessons')
+                .select('*')
+                .eq('unit_id', unit.id)
+                .order('order', { ascending: true });
+
+            return {
+                ...unit,
+                lessons: lessonsData || []
+            };
+        }));
+
+        const fullCourse = {
+            ...courseData,
+            units: unitsWithLessons
+        };
+
+        setCourse(fullCourse);
+
+        // 4. Fetch user progress
+        const { data: progress } = await supabase
+            .from('user_progress')
+            .select('*')
+            .eq('user_id', user.id);
+
+        const pMap = new Map(progress?.map((p: any) => [p.lesson_id, p]) || []);
+        setProgressMap(pMap);
+        setLoading(false);
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
-    const course: CourseWithUnits = await response.json();
-
-    // Fetch user progress
-    const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id);
-
-    const progressMap = new Map(progress?.map(p => [p.lesson_id, p]) || []);
+    if (!course) return null;
 
     return (
         <div className="min-h-screen bg-background">
@@ -51,7 +112,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
                 {/* Units */}
                 <div className="space-y-8">
-                    {course.units?.map((unit, unitIndex) => (
+                    {course.units?.map((unit: any, unitIndex: number) => (
                         <div key={unit.id} className="bg-card border rounded-xl p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center font-bold">
@@ -65,10 +126,27 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
                             {/* Lessons */}
                             <div className="space-y-3 mt-6">
-                                {unit.lessons?.map((lesson, lessonIndex) => {
+                                {unit.lessons?.map((lesson: any, lessonIndex: number) => {
                                     const lessonProgress = progressMap.get(lesson.id);
                                     const isCompleted = lessonProgress?.completed || false;
-                                    const isLocked = lessonIndex > 0 && !progressMap.get(unit.lessons[lessonIndex - 1]?.id)?.completed;
+
+                                    // Lock logic: Previous lesson must be completed
+                                    // Simplified: If it's the first lesson of first unit, it's unlocked
+                                    // Otherwise, check previous lesson completion
+                                    let isLocked = false;
+                                    if (unitIndex === 0 && lessonIndex === 0) {
+                                        isLocked = false;
+                                    } else if (lessonIndex > 0) {
+                                        const prevLesson = unit.lessons[lessonIndex - 1];
+                                        isLocked = !progressMap.get(prevLesson.id)?.completed;
+                                    } else if (unitIndex > 0) {
+                                        // Check last lesson of previous unit
+                                        const prevUnit = course.units[unitIndex - 1];
+                                        if (prevUnit && prevUnit.lessons.length > 0) {
+                                            const lastLessonOfPrevUnit = prevUnit.lessons[prevUnit.lessons.length - 1];
+                                            isLocked = !progressMap.get(lastLessonOfPrevUnit.id)?.completed;
+                                        }
+                                    }
 
                                     return (
                                         <LessonCard

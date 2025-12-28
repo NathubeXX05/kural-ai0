@@ -143,6 +143,8 @@ function StatCard({ icon, label, value, color }: {
 }
 
 function CourseCard({ course }: { course: { id: number; title: string; description: string } }) {
+    const router = useRouter();
+
     return (
         <div className="bg-card border rounded-xl p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
@@ -154,11 +156,12 @@ function CourseCard({ course }: { course: { id: number; title: string; descripti
             <h3 className="text-xl font-bold mb-2">{course.title}</h3>
             <p className="text-muted-foreground mb-6 line-clamp-2">{course.description}</p>
 
-            <Link href={`/learn/${course.id}`}>
-                <Button className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
-                    Start Learning
-                </Button>
-            </Link>
+            <Button
+                onClick={() => router.push(`/learn/${course.id}`)}
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+            >
+                Start Learning
+            </Button>
         </div>
     );
 }
