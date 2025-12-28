@@ -33,11 +33,16 @@ export default function LearnPage() {
 
     const fetchData = async (userId: string) => {
         // Fetch courses
-        const { data: coursesData } = await supabase
+        const { data: coursesData, error: coursesError } = await supabase
             .from('courses')
             .select('*')
             .order('id', { ascending: true });
 
+        if (coursesError) {
+            console.error('Error fetching courses:', coursesError);
+        }
+
+        console.log('Courses data:', coursesData);
         setCourses(coursesData || []);
 
         // Fetch user progress
