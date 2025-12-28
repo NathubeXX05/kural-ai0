@@ -1,146 +1,196 @@
-# Kural AI - Tamil Learning Application
+# Kural AI - Next.js + Supabase
 
-Application web d'apprentissage du Tamil, maintenant **indépendante de Replit** et fonctionnant localement.
+Learn Tamil with AI-powered lessons and interactive exercises.
 
-## 🚀 Configuration
+## 🚀 Quick Start
 
-### Prérequis
+### 1. Prerequisites
 
-- Node.js 20 LTS
-- PostgreSQL 16
-- npm ou yarn
+- Node.js 18+ installed
+- A Supabase account ([supabase.com](https://supabase.com))
 
-### Installation
+### 2. Setup Supabase
 
-1. **Cloner le projet** (si ce n'est pas déjà fait)
+1. Create a new project on Supabase
+2. Go to **SQL Editor** and run:
+   - First: `supabase-schema.sql` (creates tables)
+   - Then: `supabase-seed.sql` (adds demo data)
 
-2. **Installer les dépendances**
+### 3. Environment Variables
+
+1. Copy `env.local.template` to `.env.local`
+2. Fill in your Supabase credentials from **Settings** → **API**:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   ```
+
+### 4. Install & Run
+
 ```bash
+# Install dependencies
 npm install
-```
 
-3. **Configurer la base de données**
-
-Créez un fichier `.env` à la racine du projet en vous basant sur `.env.example` :
-
-```bash
-cp .env.example .env
-```
-
-Modifiez les valeurs dans `.env` :
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/kural_ai
-SESSION_SECRET=votre-secret-session-tres-securise
-PORT=5000
-NODE_ENV=development
-```
-
-4. **Créer la base de données**
-
-```bash
-# Créez une base de données PostgreSQL nommée 'kural_ai'
-createdb kural_ai
-
-# Ou via psql :
-psql -U postgres
-CREATE DATABASE kural_ai;
-\q
-```
-
-5. **Pousser le schéma vers la base de données**
-
-```bash
-npm run db:push
-```
-
-### Démarrage
-
-**Mode développement :**
-```bash
+# Run development server
 npm run dev
 ```
 
-L'application sera accessible sur `http://localhost:5000`
+Open [http://localhost:3000](http://localhost:3000)
 
-**Mode production :**
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── (app)/              # Protected routes (requires auth)
+│   │   ├── learn/          # Dashboard - course list
+│   │   ├── lesson/[id]/    # Lesson page with exercises
+│   │   ├── chat/           # AI chat practice
+│   │   ├── profile/        # User profile
+│   │   ├── leaderboard/    # Leaderboard
+│   │   └── quests/         # Daily quests
+│   ├── api/                # API Routes
+│   │   ├── courses/        # GET courses
+│   │   ├── lessons/[id]/   # GET lesson with exercises
+│   │   └── progress/       # GET/POST user progress
+│   ├── auth/               # Authentication page
+│   └── page.tsx            # Landing page
+├── components/
+│   ├── ui/                 # Base UI components
+│   └── layout/             # Header, Footer, Sidebar
+├── lib/
+│   ├── supabase/           # Supabase clients
+│   └── types/              # TypeScript types
+└── hooks/                  # Custom React hooks
+```
+
+---
+
+## 🗄️ Database Schema
+
+### Tables
+
+- **courses** - Tamil learning courses
+- **units** - Units within courses
+- **lessons** - Lessons within units
+- **exercises** - Exercises within lessons (MCQ or Assist type)
+- **user_progress** - User progress tracking
+
+### Row Level Security (RLS)
+
+- ✅ Courses, units, lessons, exercises: Public read access
+- ✅ User progress: Users can only see/modify their own data
+
+---
+
+## 🔑 API Routes
+
+### Courses
+
+- `GET /api/courses` - Get all courses
+- `GET /api/courses/[id]` - Get course with units and lessons
+
+### Lessons
+
+- `GET /api/lessons/[id]` - Get lesson with exercises
+
+### Progress
+
+- `GET /api/progress` - Get user's progress (requires auth)
+- `POST /api/progress` - Update progress (requires auth)
+  ```json
+  {
+    "lesson_id": 1,
+    "completed": true,
+    "score": 100
+  }
+  ```
+
+---
+
+## 🎨 Features
+
+- ✅ **Next.js 16** with App Router
+- ✅ **Supabase** for database and auth
+- ✅ **TypeScript** for type safety
+- ✅ **Tailwind CSS** for styling
+- ✅ **Framer Motion** for animations
+- ✅ **Row Level Security** for data protection
+- ✅ **Server Components** for optimal performance
+
+---
+
+## 🚢 Deployment
+
+### Deploy to Vercel
+
+1. Push your code to GitHub
+2. Import project on [vercel.com](https://vercel.com)
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+4. Deploy!
+
+Vercel will automatically detect Next.js and configure everything.
+
+---
+
+## 📝 Development
+
 ```bash
+# Development
+npm run dev
+
+# Build for production
 npm run build
+
+# Start production server
 npm start
+
+# Lint code
+npm run lint
 ```
 
-## 📝 Changements par rapport à Replit
+---
 
-### ✅ Supprimé
-- Fichier `.replit` (configuration Replit)
-- Dossier `server/replit_integrations/` (authentification OAuth Replit, chat, images)
-- Dépendances aux variables d'environnement Replit (`REPL_ID`, `ISSUER_URL`)
+## 🔐 Authentication
 
-### ✨ Ajouté
-- **Authentification locale** avec `passport-local` et `bcryptjs`
-- **Scripts cross-platform** avec `cross-env` pour Windows
-- **Endpoints d'authentification** :
-  - `POST /api/register` - Inscription
-  - `POST /api/login` - Connexion
-  - `POST /api/logout` - Déconnexion
-  - `GET /api/user` - Obtenir l'utilisateur actuel
+Uses Supabase Auth with email/password. Users are automatically created in the `auth.users` table.
 
-### 🔄 Modifié
-- Table `users` : ajout du champ `passwordHash` pour l'authentification locale
-- `server/auth.ts` : nouveau système d'authentification local
-- `server/authStorage.ts` : gestion des utilisateurs avec mots de passe
-- `server/routes.ts` : utilisation de `user.id` au lieu de `user.claims.sub`
+To enable email auth in Supabase:
+1. Go to **Authentication** → **Providers**
+2. Enable **Email** provider
+3. Configure email templates (optional)
 
-## 🔐 Authentification
+---
 
-L'application utilise maintenant une authentification locale par email/mot de passe :
+## 📚 Learn More
 
-- Les mots de passe sont hachés avec `bcryptjs`
-- Les sessions sont stockées dans PostgreSQL
-- Les cookies de session sont sécurisés en production
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Tailwind CSS](https://tailwindcss.com/docs)
 
-## 📦 Structure du projet
+---
 
-```
-Kural-AI/
-├── client/           # Application React (frontend)
-├── server/           # API Express (backend)
-│   ├── auth.ts      # Authentification locale
-│   ├── authStorage.ts # Gestion des utilisateurs
-│   ├── routes.ts    # Routes de l'API
-│   └── ...
-├── shared/          # Code partagé (schémas, types)
-├── .env.example     # Template de configuration
-└── package.json     # Dépendances
-```
+## 🆘 Troubleshooting
 
-## 🛠️ Scripts disponibles
+### "relation does not exist" error
+- Make sure you ran `supabase-schema.sql` in Supabase SQL Editor
 
-- `npm run dev` - Démarre le serveur de développement
-- `npm run build` - Compile l'application pour la production
-- `npm start` - Démarre le serveur de production
-- `npm run check` - Vérifie les types TypeScript
-- `npm run db:push` - Pousse le schéma vers la base de données
+### Auth not working
+- Check that environment variables are set correctly
+- Verify Supabase email provider is enabled
 
-## 📚 Technologies utilisées
+### API routes returning 500
+- Check Supabase logs in Dashboard → Logs
+- Verify RLS policies are set correctly
 
-- **Frontend** : React, Vite, TailwindCSS
-- **Backend** : Express, Node.js
-- **Base de données** : PostgreSQL, Drizzle ORM
-- **Authentification** : Passport.js, bcryptjs
-- **TypeScript** : Pour un code type-safe
-
-## 🐛 Dépannage
-
-### Erreur de connexion à la base de données
-Vérifiez que PostgreSQL est démarré et que `DATABASE_URL` dans `.env` est correct.
-
-### Erreur "cross-env not found"
-Réinstallez les dépendances : `npm install`
-
-### Erreur de session
-Vérifiez que la table `sessions` existe dans votre base de données (créée par `db:push`)
+---
 
 ## 📄 License
 
 MIT
-# kural-ai0

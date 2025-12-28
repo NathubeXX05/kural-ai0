@@ -1,6 +1,3 @@
 {
-    "version": 2,
-    "buildCommand": "cd kuralai-main && npm install && npm run build",
-    "outputDirectory": "kuralai-main/.next",
-    "installCommand": "cd kuralai-main && npm install"
+    "version": 2
 }
