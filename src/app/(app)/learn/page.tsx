@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -7,12 +6,14 @@ import { BookOpen, Trophy, Target } from 'lucide-react';
 export default async function LearnPage() {
     const supabase = await createClient();
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get current user (middleware already verified auth)
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-        redirect('/auth');
+    if (!user) {
+        // This should never happen due to middleware, but just in case
+        return null;
     }
+
 
     // Fetch courses
     const { data: courses } = await supabase
