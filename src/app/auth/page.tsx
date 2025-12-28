@@ -25,11 +25,11 @@ function AuthForm() {
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                window.location.href = redirectTo;
+                router.push(redirectTo);
             }
         };
         checkSession();
-    }, [redirectTo]);
+    }, [redirectTo, router]);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();

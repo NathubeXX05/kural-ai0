@@ -6,12 +6,17 @@ import { BookOpen, Trophy, Target } from 'lucide-react';
 export default async function LearnPage() {
     const supabase = await createClient();
 
-    // Get current user (middleware already verified auth)
+    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
 
+    // If no user, show a client component that redirects
     if (!user) {
-        // This should never happen due to middleware, but just in case
-        return null;
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p>Redirecting to login...</p>
+                <script dangerouslySetInnerHTML={{ __html: `window.location.href = '/auth?redirectTo=/learn'` }} />
+            </div>
+        );
     }
 
 

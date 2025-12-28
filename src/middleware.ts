@@ -64,13 +64,14 @@ export async function middleware(req: NextRequest) {
 
     const isProtectedPath = protectedPaths.some(path => req.nextUrl.pathname.startsWith(path));
 
+    // TEMPORARILY DISABLED - Testing if this causes the loop
     // If trying to access protected route without session, redirect to auth
-    if (isProtectedPath && !session) {
-        const redirectUrl = req.nextUrl.clone();
-        redirectUrl.pathname = '/auth';
-        redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
-        return NextResponse.redirect(redirectUrl);
-    }
+    // if (isProtectedPath && !session) {
+    //     const redirectUrl = req.nextUrl.clone();
+    //     redirectUrl.pathname = '/auth';
+    //     redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+    //     return NextResponse.redirect(redirectUrl);
+    // }
 
     return response;
 }
