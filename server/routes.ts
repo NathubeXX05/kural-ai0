@@ -1,9 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { registerChatRoutes } from "./replit_integrations/chat";
-import { registerImageRoutes } from "./replit_integrations/image";
+import { setupAuth, registerAuthRoutes } from "./auth";
 import { api } from "@shared/routes";
 import { z } from "zod";
 
@@ -14,11 +12,9 @@ export async function registerRoutes(
   // Auth
   await setupAuth(app);
   registerAuthRoutes(app);
-  registerChatRoutes(app);
-  registerImageRoutes(app);
 
   // App Routes
-  
+
   app.get(api.courses.list.path, async (req, res) => {
     const courses = await storage.getCourses();
     res.json(courses);
@@ -29,17 +25,17 @@ export async function registerRoutes(
     // But for this app, let's assume public access for structure is fine
     const courseId = Number(req.params.courseId);
     const units = await storage.getUnits(courseId);
-    
+
     // Fetch lessons for each unit and attach user progress if logged in
     const unitsWithLessons = await Promise.all(units.map(async (unit) => {
       const lessons = await storage.getLessons(unit.id);
-      
+
       const lessonsWithProgress = await Promise.all(lessons.map(async (lesson) => {
         let completed = false;
         if (req.isAuthenticated()) {
           const user = req.user as any;
-          // user.claims.sub is the ID in auth.ts
-          const progress = await storage.getUserProgress(user.claims.sub, lesson.id);
+          // user.id is the ID in local auth
+          const progress = await storage.getUserProgress(user.id, lesson.id);
           if (progress?.completed) completed = true;
         }
         return { ...lesson, completed };
@@ -66,39 +62,39 @@ export async function registerRoutes(
     const user = req.user as any;
     const lessonId = Number(req.params.lessonId);
     const { completed, score } = req.body;
-    
-    const progress = await storage.updateUserProgress(user.claims.sub, lessonId, completed, score);
+
+    const progress = await storage.updateUserProgress(user.id, lessonId, completed, score);
     res.json(progress);
   });
 
   // Seed Data
   if ((await storage.getCourses()).length === 0) {
     console.log("Seeding database...");
-    const course = await storage.createCourse({ 
-      title: "Tamil", 
-      description: "Learn the ancient language of Tamil" 
+    const course = await storage.createCourse({
+      title: "Tamil",
+      description: "Learn the ancient language of Tamil"
     });
 
-    const unit1 = await storage.createUnit({ 
-      courseId: course.id, 
-      title: "Basics 1", 
-      description: "Learn the basic letters and greetings", 
-      order: 1 
+    const unit1 = await storage.createUnit({
+      courseId: course.id,
+      title: "Basics 1",
+      description: "Learn the basic letters and greetings",
+      order: 1
     });
-    
+
     const lesson1 = await storage.createLesson({ unitId: unit1.id, title: "Vowels (Uyir Ezhuthukkal)", order: 1 });
     await storage.createExercise({ lessonId: lesson1.id, type: "mcq", question: "Which letter represents 'A' (sound as in America)?", options: ["அ", "ஆ", "இ", "ஈ"], answer: "அ", order: 1 });
     await storage.createExercise({ lessonId: lesson1.id, type: "mcq", question: "Which letter represents 'Aa' (sound as in Art)?", options: ["அ", "ஆ", "இ", "ஈ"], answer: "ஆ", order: 2 });
-    
+
     const lesson2 = await storage.createLesson({ unitId: unit1.id, title: "Greetings", order: 2 });
     await storage.createExercise({ lessonId: lesson2.id, type: "assist", question: "Translate 'Hello' to Tamil", answer: "Vanakkam", order: 1, options: ["Vanakkam", "Nandri", "Poitu varen"] });
     await storage.createExercise({ lessonId: lesson2.id, type: "assist", question: "Translate 'Nandri' to English", answer: "Thank you", order: 2, options: ["Hello", "Thank you", "Goodbye"] });
 
-    const unit2 = await storage.createUnit({ 
-      courseId: course.id, 
-      title: "Basics 2", 
-      description: "Simple words and family", 
-      order: 2 
+    const unit2 = await storage.createUnit({
+      courseId: course.id,
+      title: "Basics 2",
+      description: "Simple words and family",
+      order: 2
     });
     const lesson3 = await storage.createLesson({ unitId: unit2.id, title: "Family", order: 1 });
     await storage.createExercise({ lessonId: lesson3.id, type: "assist", question: "Translate 'Amma'", answer: "Mother", order: 1, options: ["Mother", "Father", "Sister"] });
