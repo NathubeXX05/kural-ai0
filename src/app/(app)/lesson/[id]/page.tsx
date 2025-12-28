@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 import type { LessonWithExercises, Exercise } from '@/lib/types/database';
 
-export default function LessonPage({ params }: { params: { id: string } }) {
+export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const [lesson, setLesson] = useState<LessonWithExercises | null>(null);
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
@@ -18,14 +20,34 @@ export default function LessonPage({ params }: { params: { id: string } }) {
 
     useEffect(() => {
         fetchLesson();
-    }, [params.id]);
+    }, [id]);
 
     const fetchLesson = async () => {
         try {
-            const res = await fetch(`/api/lessons/${params.id}`);
-            if (res.ok) {
-                const data = await res.json();
-                setLesson(data);
+            // Get Lesson
+            const { data: lessonData } = await supabase
+                .from('lessons')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (!lessonData) {
+                setLoading(false);
+                return;
+            }
+
+            // Get Exercises
+            const { data: exercisesData } = await supabase
+                .from('exercises')
+                .select('*')
+                .eq('lesson_id', id)
+                .order('order', { ascending: true });
+
+            if (lessonData && exercisesData) {
+                setLesson({
+                    ...lessonData,
+                    exercises: exercisesData
+                });
             }
         } catch (error) {
             console.error('Error fetching lesson:', error);
@@ -64,15 +86,21 @@ export default function LessonPage({ params }: { params: { id: string } }) {
         const finalScore = Math.round((score / (lesson?.exercises.length || 1)) * 100);
 
         try {
-            await fetch('/api/progress', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    lesson_id: parseInt(params.id),
-                    completed: true,
-                    score: finalScore,
-                }),
-            });
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                const { error } = await supabase
+                    .from('user_progress')
+                    .upsert({
+                        user_id: user.id,
+                        lesson_id: parseInt(id),
+                        completed: true,
+                        score: finalScore,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'user_id,lesson_id' });
+
+                if (error) throw error;
+            }
 
             // Redirect back to course
             router.push('/learn');
@@ -84,7 +112,7 @@ export default function LessonPage({ params }: { params: { id: string } }) {
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground">Loading lesson...</p>
             </div>
         );
     }
@@ -93,8 +121,19 @@ export default function LessonPage({ params }: { params: { id: string } }) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <p className="text-muted-foreground">Lesson not found</p>
+                <Button variant="link" onClick={() => router.push('/learn')}>Return to Courses</Button>
             </div>
         );
+    }
+
+    // Parse options if it's a string (fixes JSONB parsing issue with supabase-js)
+    let options = currentExercise.options;
+    if (typeof options === 'string') {
+        try {
+            options = JSON.parse(options);
+        } catch (e) {
+            console.error("Failed to parse options", e);
+        }
     }
 
     return (
@@ -123,16 +162,16 @@ export default function LessonPage({ params }: { params: { id: string } }) {
                 <div className="bg-card border rounded-xl p-8 mb-6">
                     <h2 className="text-2xl font-bold mb-6">{currentExercise.question}</h2>
 
-                    {currentExercise.type === 'mcq' && currentExercise.options ? (
+                    {currentExercise.type === 'mcq' && options ? (
                         <div className="space-y-3">
-                            {currentExercise.options.map((option, index) => (
+                            {options.map((option: string, index: number) => (
                                 <button
                                     key={index}
                                     onClick={() => setUserAnswer(option)}
                                     disabled={showFeedback}
                                     className={`w-full p-4 text-left border rounded-lg transition-all ${userAnswer === option
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-primary/50'
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border hover:border-primary/50'
                                         } ${showFeedback ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {option}
