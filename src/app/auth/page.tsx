@@ -47,8 +47,10 @@ function AuthForm() {
                 if (error) throw error;
 
                 if (data.user) {
+                    // Wait a bit for session to sync
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    router.push(redirectTo);
                     router.refresh();
-                    window.location.href = redirectTo;
                 }
             } else {
                 // Sign up
@@ -93,8 +95,9 @@ function AuthForm() {
 
                     if (progressError) console.error("Progress creation error:", progressError);
 
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    router.push("/onboarding");
                     router.refresh();
-                    window.location.href = "/onboarding";
                 }
             }
         } catch (err: any) {
