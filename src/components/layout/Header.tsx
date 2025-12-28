@@ -20,7 +20,7 @@ export function Header() {
                     </Link>
                 </nav>
                 <div className="flex items-center gap-4">
-                    <Link href="/login" className="hidden text-sm font-medium hover:text-primary sm:block">
+                    <Link href="/auth" className="hidden text-sm font-medium hover:text-primary sm:block">
                         Log in
                     </Link>
                     <Link href="/learn">
