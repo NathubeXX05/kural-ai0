@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link"; // Import essentiel pour Next.js
 import { Button } from "@/components/ui/button";
 import { Play, BookOpen, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,12 +69,18 @@ export default function KuralPage() {
                     </div>
 
                     <div className="flex gap-3 pt-4">
-                        <a href="/kural/practice/1" className="flex-1">
-                            <Button className="w-full gap-2" size="lg">
+                        {/* CORRECTION ICI :
+                           1. Utilisation de 'asChild' pour fusionner le bouton et le lien.
+                           2. Utilisation de <Link> de Next.js au lieu de <a>.
+                           3. Déplacement de 'flex-1' dans le className du Button.
+                        */}
+                        <Button className="w-full gap-2 flex-1" size="lg" asChild>
+                            <Link href="/kural/practice/1">
                                 <Play className="h-5 w-5" />
                                 Practice Pronunciation
-                            </Button>
-                        </a>
+                            </Link>
+                        </Button>
+                        
                         <Button
                             variant="outline"
                             size="lg"
