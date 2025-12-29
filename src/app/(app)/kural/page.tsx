@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link"; // Import essentiel pour Next.js
+import { useRouter } from "next/navigation"; // 1. Import du router
 import { Button } from "@/components/ui/button";
 import { Play, BookOpen, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ const chapters = [
 
 export default function KuralPage() {
     const [isPlaying, setIsPlaying] = useState(false);
+    const router = useRouter(); // 2. Initialisation du router
 
     return (
         <div className="flex flex-col gap-8 max-w-4xl mx-auto">
@@ -69,16 +70,16 @@ export default function KuralPage() {
                     </div>
 
                     <div className="flex gap-3 pt-4">
-                        {/* CORRECTION ICI :
-                           1. Utilisation de 'asChild' pour fusionner le bouton et le lien.
-                           2. Utilisation de <Link> de Next.js au lieu de <a>.
-                           3. Déplacement de 'flex-1' dans le className du Button.
+                        {/* CORRECTION : Utilisation de onClick + router.push
+                           Cela évite l'erreur "asChild does not exist" et fonctionne sur mobile.
                         */}
-                        <Button className="w-full gap-2 flex-1" size="lg" asChild>
-                            <Link href="/kural/practice/1">
-                                <Play className="h-5 w-5" />
-                                Practice Pronunciation
-                            </Link>
+                        <Button 
+                            className="w-full gap-2 flex-1" 
+                            size="lg"
+                            onClick={() => router.push('/kural/practice/1')}
+                        >
+                            <Play className="h-5 w-5" />
+                            Practice Pronunciation
                         </Button>
                         
                         <Button
@@ -124,3 +125,4 @@ export default function KuralPage() {
         </div>
     );
 }
+
